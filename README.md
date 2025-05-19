@@ -3,7 +3,7 @@
 This app was created with tutorial "30 days to Learn Laravel", episodes 27 - 30:
 https://laracasts.com/series/30-days-to-learn-laravel-11/episodes/27
 
-# 27. From Design to Blade
+## 27. From Design to Blade
 
 Create a template `resources\views\components\layout.blade.php`.
 
@@ -161,3 +161,135 @@ Later we can use it:
 </section>
 ```
 
+## 29. Jobs, Tags, TDD, Oh My!
+
+Generage a migration:
+
+```
+php artisan make:migration create_employers_table
+```
+
+To change table name for Laravel Jobs, edit `config/queue.php`:
+
+```php
+    'database' => [
+        'table' => env('DB_QUEUE_TABLE', 'queued_jobs'),
+    ],
+    'batching' => [
+        'table' => 'queued_job_batches',
+    ],
+    'failed' => [
+        'table' => 'queued_failed_jobs',
+    ],
+```
+
+Also rename table names in the default migration file `database\migrations\0001_01_01_000002_create_queued_jobs_table.php`.
+
+Rerun migrations:
+
+```
+php artisan migrate:fresh
+```
+
+Generate a model, controller, factory, seeder, policy:
+
+```
+php artisan make:model Employer -cfs --policy
+```
+Generate factory, migration, seeder, request, controller, policy for a Job model:
+
+```
+php artisan make:model Job --all
+```
+
+### Unit Tests
+
+Config Unit Tests, ensure `phpunit.xml` has these values:
+
+```xml
+    <env name="DB_CONNECTION" value="sqlite"/>
+    <env name="DB_DATABASE" value=":memory:"/>
+```
+
+Generate a test file:
+
+```
+php artisan make:test JobTest --unit
+```
+
+Run tests:
+
+```
+php artisan test
+```
+
+To fix error `A facade root has not been set.` edit `tests/Pest.php`:
+
+```php
+pest()->extend(Tests\TestCase::class)
+    ->use(Illuminate\Foundation\Testing\RefreshDatabase::class)
+    ->in('Feature', 'Unit');
+```
+
+### Factory
+
+We can generate unique tag in the factory:
+
+```php
+class TagFactory extends Factory
+{
+    /**
+     * Define the model's default state.
+     *
+     * @return array<string, mixed>
+     */
+    public function definition(): array
+    {
+        return [
+            'name' => fake()->unique()->name,
+        ];
+    }
+}
+```
+
+### Migration for a user_tag pivot table
+
+```php
+Schema::create('job_tag', function (Blueprint $table) {
+    $table->id();
+    $table->foreignIdFor(Job::class)->constrained()->cascadeOnDelete();
+    $table->foreignIdFor(Tag::class)->constrained()->cascadeOnDelete();
+    $table->timestamps();
+});
+```
+
+### Disable mass asignment feature
+
+Edit `app\Providers\AppServiceProvider.php`:
+
+```php
+public function boot(): void
+{
+    Model::unguard();
+}
+```
+
+### Display tags in the template
+
+```php
+@foreach ($tags as $tag)
+    <x-tag :tag="$tag" />
+@endforeach
+```
+
+If attribute name equals variable name we can use short shortcut:
+
+```php
+<x-tag :$tag />
+```
+
+### Group by attribute
+
+```php
+$jobs = Job::all()->groupBy('featured');
+```
