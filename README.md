@@ -293,3 +293,89 @@ If attribute name equals variable name we can use short shortcut:
 ```php
 $jobs = Job::all()->groupBy('featured');
 ```
+
+## 30. The Everything Episode
+
+Take form templates from: https://github.com/laracasts/pixel-position/tree/main/resources/views/components/forms
+
+Generate a controllers:
+
+```
+php artisan make:controller SessionController --resource
+php artisan make:controller RegisteredUserController --resource
+```
+
+### Controller validation
+
+On one request in the Controller we can validate 2 groups of attributes that belong to different models:
+
+```php
+    $userAttributes = $request->validate([
+        'name' => ['required'],
+        'email' => ['required', 'email', 'unique:users,email'],
+        'password' => ['required', 'confirmed', Password::min(6)]
+    ]);
+
+    $employerAttributes = $request->validate([
+        'name' => ['required'],
+        'logo' => ['required', File::types(['png', 'jpg', 'webp'])],
+    ]);
+```
+
+### Save file
+
+In a controller action:
+
+```php
+$logoPath = $request->logo->store('logos');
+```
+
+Here `logo` is an instance of `Illuminate\Http\UploadedFile`.
+
+Edit `.env` to store files in the public directory:
+
+```
+FILESYSTEM_DISK=public
+```
+
+See a config at `config\filesystems.php`.
+
+File will be saved to `storage/app/public/logos` folder.
+
+### Use storage files
+
+Create a link from `public/storage` to `storage/app/public`
+
+```
+php artisan storage:link
+```
+
+We can reference to a file in the storage in the template:
+
+```html
+<img src="{{ asset($employer->logo) }}" alt="" class="rounded-xl">
+```
+
+### Eager load employer, tags
+
+```php
+$jobs = Job::latest()
+    ->with(['employer', 'tags'])
+    ->get()->groupBy('featured');
+
+$jobs = Job::query()
+    ->with(['employer', 'tags'])
+    ->where('title', 'LIKE', '%' . request('q') . '%')
+    ->get();
+```
+
+### Log Out form
+
+```html
+<form method="POST" action="/logout">
+    @csrf
+    @method('DELETE')
+    <button>Log Out</button>
+</form>
+```
+
